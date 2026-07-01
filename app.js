@@ -1,0 +1,34 @@
+const empty = {projects:[], raid:[], milestones:[], budget:[], resources:[], docs:{}};
+let state = JSON.parse(localStorage.getItem('pmoApp') || JSON.stringify(empty));
+const £ = n => '£' + Number(n || 0).toLocaleString('en-GB', {maximumFractionDigits:0});
+const save = () => { localStorage.setItem('pmoApp', JSON.stringify(state)); renderAll(); };
+const projectName = id => (state.projects.find(p=>p.id==id)||{}).name || id || '';
+function addForm(formId, collection, mapper){document.getElementById(formId).addEventListener('submit',e=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.target));state[collection].push({id:Date.now(),...mapper(data)});e.target.reset();save();});}
+addForm('projectForm','projects',d=>d);
+addForm('raidForm','raid',d=>d);
+addForm('milestoneForm','milestones',d=>d);
+addForm('budgetForm','budget',d=>d);
+addForm('resourceForm','resources',d=>({...d, weeklyCost:Number(d.hours||0)*Number(d.rate||0), monthlyCost:Number(d.hours||0)*Number(d.rate||0)*4.33}));
+
+document.querySelectorAll('.nav').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('.nav,.view').forEach(x=>x.classList.remove('active'));btn.classList.add('active');document.getElementById(btn.dataset.view).classList.add('active');document.getElementById('pageTitle').textContent=btn.textContent;});
+document.getElementById('resetBtn').onclick=()=>{if(confirm('Reset all local data?')){state=structuredClone(empty);save();}};
+document.getElementById('seedBtn').onclick=()=>{state={projects:[{id:1,name:'Digital Case Management',sponsor:'Sponsor Name',manager:'Project Manager',rag:'Amber',start:'2026-07-01',end:'2026-12-31'}],raid:[{id:2,project:'1',type:'Risk',description:'Resource capacity may impact milestone delivery.',owner:'PM',rag:'Amber',status:'Open'}],milestones:[{id:3,project:'1',name:'PID approved',due:'2026-07-31',rag:'Amber',status:'In Progress'}],budget:[{id:4,project:'1',month:'2026-07',budget:50000,actual:21000,forecast:48000}],resources:[{id:5,project:'1',name:'Business Analyst',role:'BA',start:'2026-07-01',end:'2026-09-30',allocation:50,hours:18.75,rate:65,costCentre:'PMO',weeklyCost:1218.75,monthlyCost:5277.19}],docs:{'1_PID':'Purpose, scope, governance, roles, milestones, RAID summary and approval route.'}};save();};
+function options(){return state.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');}
+function table(rows, cols, collection){ if(!rows.length) return '<p class="muted">No records yet.</p>'; return `<table><thead><tr>${cols.map(c=>`<th>${c[0]}</th>`).join('')}<th></th></tr></thead><tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${c[2]?c[2](r[c[1]],r):r[c[1]]??''}</td>`).join('')}<td><button class="danger" onclick="removeItem('${collection}',${r.id})">Delete</button></td></tr>`).join('')}</tbody></table>`; }
+function removeItem(collection,id){state[collection]=state[collection].filter(x=>x.id!==id);save();}
+function renderAll(){document.querySelectorAll('select[name="project"],#docProject').forEach(s=>s.innerHTML=options());
+ const totalBudget=state.budget.reduce((a,b)=>a+Number(b.budget||0),0), actual=state.budget.reduce((a,b)=>a+Number(b.actual||0),0), res=state.resources.reduce((a,b)=>a+Number(b.monthlyCost||0),0);
+ const rags=state.projects.map(p=>p.rag); const overall=rags.includes('Red')?'Red':rags.includes('Amber')?'Amber':rags.includes('Blue')?'Blue':'Green';
+ kpiProjects.textContent=state.projects.length; kpiRag.textContent=overall; kpiRag.className='rag-'+overall; kpiBudget.textContent=£(totalBudget); kpiActual.textContent=£(actual); kpiResources.textContent=£(res); kpiRaid.textContent=state.raid.filter(r=>r.status!=='Closed').length;
+ projectTable.innerHTML=table(state.projects,[['Name','name'],['Sponsor','sponsor'],['PM','manager'],['RAG','rag',(v)=>`<span class="rag-${v}">${v}</span>`],['Start','start'],['End','end']],'projects');
+ raidTable.innerHTML=table(state.raid,[['Project','project',v=>projectName(v)],['Type','type'],['Description','description'],['Owner','owner'],['RAG','rag',(v)=>`<span class="rag-${v}">${v}</span>`],['Status','status']],'raid');
+ milestoneTable.innerHTML=table(state.milestones,[['Project','project',v=>projectName(v)],['Milestone','name'],['Due','due'],['RAG','rag',(v)=>`<span class="rag-${v}">${v}</span>`],['Status','status']],'milestones');
+ budgetTable.innerHTML=table(state.budget,[['Project','project',v=>projectName(v)],['Month','month'],['Budget','budget',£],['Actual','actual',£],['Forecast','forecast',£],['Variance','actual',(v,r)=>£(Number(r.budget||0)-Number(r.actual||0))]],'budget');
+ resourceTable.innerHTML=table(state.resources,[['Project','project',v=>projectName(v)],['Name','name'],['Role','role'],['Allocation %','allocation'],['Hours/Wk','hours'],['Rate','rate',£],['Weekly Cost','weeklyCost',£],['Monthly Cost','monthlyCost',£],['Cost Centre','costCentre']],'resources');
+}
+docProject.onchange=loadDoc; docType.onchange=loadDoc; function loadDoc(){docContent.value=state.docs[`${docProject.value}_${docType.value}`]||'';} saveDocBtn.onclick=()=>{state.docs[`${docProject.value}_${docType.value}`]=docContent.value;save();};
+function exportCSV(collection){const rows=state[collection]; if(!rows.length) return alert('No data to export'); const headers=[...new Set(rows.flatMap(Object.keys))].filter(h=>h!=='id'); const csv=[headers.join(','),...rows.map(r=>headers.map(h=>`"${String(r[h]??'').replaceAll('"','""')}"`).join(','))].join('\n'); download(`${collection}.csv`,csv,'text/csv');}
+function download(name,content,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();}
+function downloadWord(title,body){const html=`<html><head><meta charset='utf-8'><title>${title}</title></head><body><h1>${title}</h1><pre style="font-family:Arial;white-space:pre-wrap">${(body||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}</pre></body></html>`;download(`${title}.doc`,html,'application/msword');}
+function generateReport(){const lines=[];lines.push('Overall Project Highlight Report\n');lines.push(`Total projects: ${state.projects.length}`);lines.push(`Total budget: ${£(state.budget.reduce((a,b)=>a+Number(b.budget||0),0))}`);lines.push(`Actual spend: ${£(state.budget.reduce((a,b)=>a+Number(b.actual||0),0))}`);lines.push(`Monthly resource forecast: ${£(state.resources.reduce((a,b)=>a+Number(b.monthlyCost||0),0))}\n`);state.projects.forEach(p=>{lines.push(`${p.name} - ${p.rag}`);lines.push(`Sponsor: ${p.sponsor||'TBC'} | PM: ${p.manager||'TBC'}`);const ms=state.milestones.filter(m=>m.project==p.id).map(m=>`- ${m.name}: ${m.status}, due ${m.due||'TBC'}, RAG ${m.rag}`).join('\n');if(ms)lines.push('Milestones:\n'+ms);const raid=state.raid.filter(r=>r.project==p.id&&r.status!=='Closed').map(r=>`- ${r.type}: ${r.description} (${r.rag})`).join('\n');if(raid)lines.push('Open RAID:\n'+raid);lines.push('');});reportOutput.value=lines.join('\n');}
+renderAll();

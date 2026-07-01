@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PMO Project Management App</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">PMO Manager</div>
+    <button class="nav active" data-view="dashboard">Dashboard</button>
+    <button class="nav" data-view="projects">Projects</button>
+    <button class="nav" data-view="docs">Documentation</button>
+    <button class="nav" data-view="raid">RAID</button>
+    <button class="nav" data-view="milestones">Milestones</button>
+    <button class="nav" data-view="budget">Budget</button>
+    <button class="nav" data-view="resources">Resources</button>
+    <button class="nav" data-view="reports">Reports</button>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="pageTitle">Dashboard</h1>
+        <p class="muted">Project governance, reporting and resource management in one workspace.</p>
+      </div>
+      <div class="actions">
+        <button id="seedBtn" class="secondary">Load Sample Data</button>
+        <button id="resetBtn" class="danger">Reset</button>
+      </div>
+    </header>
+
+    <section id="dashboard" class="view active">
+      <div class="cards">
+        <div class="card"><span>Total Projects</span><strong id="kpiProjects">0</strong></div>
+        <div class="card"><span>Overall RAG</span><strong id="kpiRag">Green</strong></div>
+        <div class="card"><span>Total Budget</span><strong id="kpiBudget">£0</strong></div>
+        <div class="card"><span>Actual Spend</span><strong id="kpiActual">£0</strong></div>
+        <div class="card"><span>Resource Forecast</span><strong id="kpiResources">£0</strong></div>
+        <div class="card"><span>Open RAID Items</span><strong id="kpiRaid">0</strong></div>
+      </div>
+      <div class="panel">
+        <h2>Executive Summary</h2>
+        <textarea id="execSummary" placeholder="Write or generate your overall project/portfolio summary here..."></textarea>
+        <button onclick="downloadWord('Executive Summary', document.getElementById('execSummary').value)">Download Summary to Word</button>
+      </div>
+    </section>
+
+    <section id="projects" class="view">
+      <div class="panel"><h2>Project Register</h2><form id="projectForm" class="grid-form">
+        <input name="name" placeholder="Project name" required />
+        <input name="sponsor" placeholder="Sponsor" />
+        <input name="manager" placeholder="Project Manager" />
+        <select name="rag"><option>Green</option><option>Amber</option><option>Red</option><option>Blue</option></select>
+        <input name="start" type="date" />
+        <input name="end" type="date" />
+        <button>Add Project</button>
+      </form><div id="projectTable"></div></div>
+    </section>
+
+    <section id="docs" class="view">
+      <div class="panel"><h2>Documentation</h2>
+        <label>Project</label><select id="docProject"></select>
+        <label>Document Type</label><select id="docType"><option>PID</option><option>Business Case</option><option>Project Plan</option><option>Highlight Report</option><option>Closure Report</option><option>Lessons Learned</option><option>Change Request</option><option>Benefits Realisation Plan</option></select>
+        <textarea id="docContent" placeholder="Write the document content here. You can export it to Word."></textarea>
+        <button id="saveDocBtn">Save Document</button>
+        <button onclick="downloadWord(document.getElementById('docType').value, document.getElementById('docContent').value)">Download to Word</button>
+      </div>
+    </section>
+
+    <section id="raid" class="view"><div class="panel"><h2>RAID Log</h2><form id="raidForm" class="grid-form">
+      <select name="project"></select><select name="type"><option>Risk</option><option>Assumption</option><option>Issue</option><option>Dependency</option></select>
+      <input name="description" placeholder="Description" required /><input name="owner" placeholder="Owner" />
+      <select name="rag"><option>Green</option><option>Amber</option><option>Red</option></select><select name="status"><option>Open</option><option>In Progress</option><option>Closed</option></select>
+      <button>Add RAID Item</button>
+    </form><button onclick="exportCSV('raid')">Export RAID to Excel CSV</button><div id="raidTable"></div></div></section>
+
+    <section id="milestones" class="view"><div class="panel"><h2>Milestones</h2><form id="milestoneForm" class="grid-form">
+      <select name="project"></select><input name="name" placeholder="Milestone" required /><input name="due" type="date" />
+      <select name="rag"><option>Green</option><option>Amber</option><option>Red</option><option>Blue</option></select><select name="status"><option>Not Started</option><option>In Progress</option><option>Completed</option></select>
+      <button>Add Milestone</button>
+    </form><button onclick="exportCSV('milestones')">Export Milestones to Excel CSV</button><div id="milestoneTable"></div></div></section>
+
+    <section id="budget" class="view"><div class="panel"><h2>Budget Tracker</h2><form id="budgetForm" class="grid-form">
+      <select name="project"></select><input name="month" type="month" /><input name="budget" type="number" placeholder="Budget £" />
+      <input name="actual" type="number" placeholder="Actual £" /><input name="forecast" type="number" placeholder="Forecast £" />
+      <button>Add Budget Line</button>
+    </form><button onclick="exportCSV('budget')">Export Budget to Excel CSV</button><div id="budgetTable"></div></div></section>
+
+    <section id="resources" class="view"><div class="panel"><h2>Resource Management</h2><form id="resourceForm" class="grid-form">
+      <select name="project"></select><input name="name" placeholder="Person name" required /><input name="role" placeholder="Role / Grade" />
+      <input name="start" type="date" /><input name="end" type="date" /><input name="allocation" type="number" placeholder="Allocation %" />
+      <input name="hours" type="number" placeholder="Hours per week" /><input name="rate" type="number" placeholder="Hourly rate £" />
+      <input name="costCentre" placeholder="Cost centre" /><button>Add Resource</button>
+    </form><button onclick="exportCSV('resources')">Export Resources to Excel CSV</button><div id="resourceTable"></div></div></section>
+
+    <section id="reports" class="view"><div class="panel"><h2>Reports</h2>
+      <button onclick="generateReport()">Generate Highlight Report</button>
+      <button onclick="downloadWord('Highlight Report', document.getElementById('reportOutput').value)">Download Report to Word</button>
+      <textarea id="reportOutput" placeholder="Generated report will appear here..."></textarea>
+    </div></section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
